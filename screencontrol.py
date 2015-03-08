@@ -3,7 +3,7 @@ from mpd import MPDClient
 client=MPDClient()
 while 1:
     try:
-        client.connect('musicbox.local',6600)
+        client.connect('localhost',6600)
         break
     except:
         print "Couldn't connect to music; waiting a bit and trying again"
