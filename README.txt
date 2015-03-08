@@ -61,7 +61,17 @@ We can now use ncmpcpp, the client, to try playing things and see if they worked
 
 Now, set up our mpd-over-bluetooth mini-client.
 
+$ mkdir dadmusictv
+$ cd dadmusictv
+$ sudo apt-get install python-virtualenv python-pip
+$ virtualenv --system-site-packages ./venv # need --system-site-packages so it includes pybluez
+$ source venv/bin/activate
+$ pip install supervisor
 
+Add files supervisor.conf, listener_daemon.py, startup.sh, shutdown.sh, screencontrol.py from this repository to /home/pi/dadmusictv.
+$ crontab -e
+Add a line:
+@reboot bash /home/pi/dadmusictv/startup.sh
 
 ------ end here -------
 
