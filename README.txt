@@ -19,7 +19,7 @@ Your Raspi will need bluetooth. I have a Bluetooth USB widget, which is a tiny t
 7. ssh pi@raspberrypi.home, password raspberry.
 8. As the motd says, run "sudo raspi-config", and expand the filesystem. Finish, and reboot as suggested. ssh in again.
 9. sudo apt-get update. sudo apt-get upgrade.
-sudo apt-get install python-bluez bluez python-gobject
+sudo apt-get install python-bluez bluez python-gobject bluetooth bluez-utils
 edit /etc/bluetooth/main.conf and add 
 DisablePlugins = pnat
 then restart bluetooth with `sudo invoke-rc.d bluetooth restart`
@@ -35,6 +35,10 @@ pi$ enter pin code (e.g., 0000)
 android: enter same pin code
 devices are now paired
 
+Ensure that the pi user can run root commands without prompting. Run "sudo visudo" and add to the bottom of the file, if it's not there already:
+
+pi ALL=(ALL) NOPASSWD: ALL
+
 Set up the music stuff:
 
 $ cd
@@ -49,11 +53,14 @@ Put some mp3s in this MUSIC folder, so mpd will have something to look at. Since
 
 Now we need mpd, which actually does all the music playing etc.
 
-$ sudo apt-get install mpd ncmpcpp
+$ sudo apt-get install mpd ncmpcpp python-mpd
 
 It will likely whine about ipv6 stuff ("mpdlisten: bind to '[::1]:6600' failed") on startup. We do not care because it's only actually going to listen for connections from localhost anyway; the Pi will have no network when it's up and running.
 
-Edit /etc/mpd.conf and set music_directory to be /MUSIC. `sudo service mpd restart` to restart mpd.
+Edit /etc/mpd.conf and set music_directory to be /MUSIC.
+Also, in /etc/mpd.conf, set mpd to listen to the network by setting "bind_to_address" to "any". We do not connect to the client over the network (we use bluetooth), but being able to connect over the network is very handy for testing the client!
+
+`sudo service mpd restart` to restart mpd.
 
 We can now use ncmpcpp, the client, to try playing things and see if they worked. Set the output volume to be whatever you want. (Probably 100%; it's not crackly then. You can set the volume that people actually hear stuff at with the volume control on the TV this will eventually be plugged into.)
 
@@ -68,7 +75,7 @@ $ virtualenv --system-site-packages ./venv # need --system-site-packages so it i
 $ source venv/bin/activate
 $ pip install supervisor
 
-Add files supervisor.conf, listener_daemon.py, startup.sh, shutdown.sh, screencontrol.py from this repository to /home/pi/dadmusictv.
+Add files supervisor.conf, listener_daemon.py, startup.sh, shutdown.sh, screencontrol.py, run_listener_daemon_once.sh from this repository to /home/pi/dadmusictv.
 $ crontab -e
 Add a line:
 @reboot bash /home/pi/dadmusictv/startup.sh

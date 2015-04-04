@@ -28,9 +28,9 @@ class TheServer:
  
     def __init__(self, host, port):
         self.server = BluetoothSocket( RFCOMM )
-        self.sock.bind(("",PORT_ANY))
+        self.server.bind(("",PORT_ANY))
         self.server.listen(5)
-        port = server_sock.getsockname()[1]
+        port = self.server.getsockname()[1]
         uuid = "62a52798-5d66-48c2-bd82-6e7c70078b70"
         advertise_service(self.server, "DadMusicTV",
             service_id = uuid,
