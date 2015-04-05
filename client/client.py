@@ -7,6 +7,8 @@ from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
+from kivy.adapters.simplelistadapter import SimpleListAdapter
+from kivy.uix.listview import ListView
 
 from Queue import Queue
 import threading
@@ -149,10 +151,19 @@ class ScrollableButtonStack(ScrollView):
 
 class DadMusicTV(App):
 
-    def swap(self, turn_on, turn_off):
-        if turn_on.parent: return
-        if turn_off.parent: self.lmain.remove_widget(turn_off)
-        self.lmain.add_widget(turn_on)
+    def show_library(self, *args):
+        if self.lvplaylist.parent: self.lmain.remove_widget(self.lvplaylist)
+        if not self.lvlibrary.parent: self.lmain.add_widget(self.lvlibrary)
+        self.blibrary.background_color = (0,1,0,1)
+        self.bplaylist.background_color = (0.5,0.5,0.5,1)
+        Clock.schedule_once(lambda x: self.mpc.send("list_artists", "list artist\n"), 0.1)
+
+    def show_playlist(self, *args):
+        if not self.lvplaylist.parent: self.lmain.add_widget(self.lvplaylist)
+        if self.lvlibrary.parent: self.lmain.remove_widget(self.lvlibrary)
+        self.bplaylist.background_color = (0,1,0,1)
+        self.blibrary.background_color = (0.5,0.5,0.5,1)
+        Clock.schedule_once(lambda x: self.mpc.send("playlistinfo", "playlistinfo\n"), 0.1)
 
     def selection_changed(self, la):
         print "selection changed"
@@ -182,6 +193,20 @@ class DadMusicTV(App):
                 if ntrack:
                     tracks.append(ntrack)
                 self.lvlibrary.load_tracks(tracks)
+            elif cmdidx == "playlistinfo":
+                tracks = []
+                ntrack = {}
+                for line in [x.strip() for x in response.split("\n")]:
+                    parts = line.split(":", 1)
+                    if len(parts) != 2: continue
+                    attr, value = [x.strip() for x in parts]
+                    if attr == "file" and ntrack:
+                        tracks.append(ntrack)
+                        ntrack = {}
+                    ntrack[attr] = value
+                if ntrack:
+                    tracks.append(ntrack)
+                self.adapter_playlist.data = ["%s %s" % (x.get("Title", x.get("file")), x.get("Artist", "")) for x in tracks]
             else:
                 print "got unknown command '%r' with response '%s'" % (cmdidx, response)
 
@@ -192,31 +217,43 @@ class DadMusicTV(App):
         mon_thr.start()
 
         host = "musictv.local"
+        host = "localhost"
         port = 6600
         self.mpc = MPC(host, port, outq)
 
         self.lmain = BoxLayout(orientation='vertical', spacing=2)
         ltop = BoxLayout(orientation='horizontal', spacing=2, size_hint=(1,0.1))
-        b1 = Button(text='Library', size_hint=(0.5,1))
-        b2 = Button(text='Playlist', size_hint=(0.5,1))
-        ltop.add_widget(b1)
-        ltop.add_widget(b2)
+        self.blibrary = Button(text='Library', size_hint=(0.5,1))
+        self.bplaylist = Button(text='Playlist', size_hint=(0.5,1))
+        ltop.add_widget(self.blibrary)
+        ltop.add_widget(self.bplaylist)
         self.lmain.add_widget(ltop)
+        self.blibrary.bind(on_press=self.show_library)
+        self.bplaylist.bind(on_press=self.show_playlist)
 
         self.lvlibrary = lvlibrary = ScrollableButtonStack(data=[{"text":"loading..."}], size_hint=(1, 0.9))
         lvlibrary.owner_app = self
-        lvplaylist = Label(text="playlist")
-        b1.bind(on_press=lambda x:self.swap(lvlibrary, lvplaylist))
-        b2.bind(on_press=lambda x:self.swap(lvplaylist, lvlibrary))
-        self.swap(lvlibrary, lvplaylist)
 
-        Clock.schedule_once(self.mpc_setup, 0.3)
+        self.lvplaylist = lvplaylist = BoxLayout(orientation='vertical', spacing=2, size_hint=(1,0.9))
+        pltop = BoxLayout(orientation='horizontal', size_hint=(1,0.1))
+        back = Button(text="<", size_hint=(0.4,1))
+        stop = Button(text="stop", size_hint=(0.3,1))
+        fwd = Button(text=">", size_hint=(0.4,1))
+        pltop.add_widget(back)
+        pltop.add_widget(stop)
+        pltop.add_widget(fwd)
+        back.bind(on_press=lambda b: self.mpc.send("back", "previous\n"))
+        stop.bind(on_press=lambda b: self.mpc.send("stop", "stop\n"))
+        fwd.bind(on_press=lambda b: self.mpc.send("fwd", "next\n"))
+        self.adapter_playlist = SimpleListAdapter(data=[], cls=Label)
+        lvplaylist_actual = ListView(adapter=self.adapter_playlist, size_hint=(1,0.9))
+        self.lvplaylist.add_widget(pltop)
+        self.lvplaylist.add_widget(lvplaylist_actual)
+
+        Clock.schedule_once(lambda x: self.mpc.send("consume", "consume 1\n"), 0)
+        self.show_library()
 
         return self.lmain
-
-    def mpc_setup(self, dt):
-        Clock.schedule_once(lambda x: self.mpc.send("consume", "consume 1\n"), 0)
-        Clock.schedule_once(lambda x: self.mpc.send("list_artists", "list artist\n"), 0.3)
 
 if __name__ == '__main__':
     DadMusicTV().run()
