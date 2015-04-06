@@ -39,6 +39,8 @@ Ensure that the pi user can run root commands without prompting. Run "sudo visud
 
 pi ALL=(ALL) NOPASSWD: ALL
 
+You need this (a) so we can re-initialise Bluetooth after every connection drop, in run_listener_daemon_once.sh, and (b) so that screencontrol.py can write to the screen (it uses the framebuffer, which requires root).
+
 Set up the music stuff:
 
 $ cd

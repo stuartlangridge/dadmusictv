@@ -23,3 +23,5 @@ cd ..../client
 buildozer android debug deploy run # builds, deploys to plugged in android device, runs app
 
 # the apk is in bin/ in the client folder
+
+Note that you should have already paired your android phone with the raspberry pi when you set up the server. You need to do this; the client does not have a browser for bluetooth devices. Also, we currently hardcode the name of the pi to be "musictv-0".

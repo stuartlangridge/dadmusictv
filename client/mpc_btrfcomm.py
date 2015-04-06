@@ -37,7 +37,7 @@ class MPC_BTRFCOMM(object):
             self.cmd_current = cmdidx
             self.send_stream.write(cmd)
             self.send_stream.flush()
-            time.sleep(0.2)
+            time.sleep(1)
 
     def socket_thread(self):
         self.cmd_current = 0
@@ -56,7 +56,11 @@ class MPC_BTRFCOMM(object):
             print "Oh no couldn't get a socket!"
             sys.exit(1)
         print "got a socket; blocking until connect"
-        self._sock.connect()
+        try:
+            self._sock.connect()
+        except Exception, e:
+            print "Couldn't connect to socket!", e
+            sys.exit(2)
         print "connected to socket!"
         self.recv_stream = self._sock.getInputStream()
         self.send_stream = self._sock.getOutputStream()
@@ -73,7 +77,7 @@ class MPC_BTRFCOMM(object):
                     except Exception, e:
                         print "There was an error reading from the read stream", e
                         break
-                print "Got data from the stream", resp
+                print "Got data from the stream: byte count", len(resp), "".join(resp)[:50], "..."
                 self.outq.put((self.cmd_current, "".join(resp)))
                 resp = []
             else:

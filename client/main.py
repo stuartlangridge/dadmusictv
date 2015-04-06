@@ -197,7 +197,8 @@ class DadMusicTV(App):
         if not self.lvlibrary.parent: self.lmain.add_widget(self.lvlibrary)
         self.blibrary.background_color = (0,1,0,1)
         self.bplaylist.background_color = (0.5,0.5,0.5,1)
-        Clock.schedule_once(lambda x: self.mpc.send("list_artists", "list artist\n"), 0.1)
+        # don't refresh artists. Restart the app to do that.
+        #Clock.schedule_once(lambda x: self.mpc.send("list_artists", "list artist\n"), 0.1)
 
     def show_playlist(self, *args):
         if not self.lvplaylist.parent: self.lmain.add_widget(self.lvplaylist)
@@ -289,6 +290,7 @@ class DadMusicTV(App):
         self.lvplaylist.add_widget(lvplaylist_actual)
 
         Clock.schedule_once(lambda x: self.mpc.send("consume", "consume 1\n"), 0)
+        Clock.schedule_once(lambda x: self.mpc.send("list_artists", "list artist\n"), 0.5)
         self.show_library()
 
         return self.lmain
