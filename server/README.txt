@@ -77,10 +77,61 @@ $ virtualenv --system-site-packages ./venv # need --system-site-packages so it i
 $ source venv/bin/activate
 $ pip install supervisor
 
-Add files supervisor.conf, listener_daemon.py, startup.sh, shutdown.sh, screencontrol.py, run_listener_daemon_once.sh from this repository to /home/pi/dadmusictv.
+Add files supervisor.conf, listener_daemon.py, startup.sh, shutdown.sh, screencontrol.py, run_listener_daemon_once.sh, dadmusictvsplash.png from this repository to /home/pi/dadmusictv.
 $ crontab -e
 Add a line:
 @reboot bash /home/pi/dadmusictv/startup.sh
+
+Now, set up the splash screen for boot time, following instructions at http://raspberrypi.stackexchange.com/a/3488
+
+$ sudo apt-get install fbi
+$ sudo nano /etc/init.d/asplashscreen
+
+Add the text:
+--------------------------8<----------------------------
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          asplashscreen
+# Required-Start:
+# Required-Stop:
+# Should-Start:      
+# Default-Start:     S
+# Default-Stop:
+# Short-Description: Show custom splashscreen
+# Description:       Show custom splashscreen
+### END INIT INFO
+
+
+do_start () {
+
+    /usr/bin/fbi -T 1 -noverbose -a /home/pi/dadmusictv/dadmusictvsplash.png    
+    exit 0
+}
+
+case "$1" in
+  start|"")
+    do_start
+    ;;
+  restart|reload|force-reload)
+    echo "Error: argument '$1' not supported" >&2
+    exit 3
+    ;;
+  stop)
+    # No-op
+    ;;
+  status)
+    exit 0
+    ;;
+  *)
+    echo "Usage: asplashscreen [start|stop]" >&2
+    exit 3
+    ;;
+esac
+--------------------------8<----------------------------
+$ sudo chmod a+x /etc/init.d/asplashscreen
+$ sudo insserv /etc/init.d/asplashscreen
+
+
 
 ------ end here -------
 

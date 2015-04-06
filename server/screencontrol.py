@@ -82,26 +82,39 @@ class pyscope:
 
         while 1:
             s = client.status()
+            print s
             if s["state"] == "play":
                 status = None
                 c = client.currentsong()
                 artist = c["artist"]
                 title = c["title"]
+                pllength = s.get("playlistlength", 0)
+                if pllength == "1":
+                    pllength = "1 song in playlist"
+                else:
+                    pllength = "%s songs in playlist" % pllength
             elif s["state"] == "pause":
                 status = "PAUSED"
                 c = client.currentsong()
                 artist = c["artist"]
                 title = c["title"]
+                pllength = s.get("playlistlength", 0)
+                if pllength == "1":
+                    pllength = "1 song in playlist"
+                else:
+                    pllength = "%s songs in playlist" % pllength
             elif s["state"] == "stop":
                 status = "NOT PLAYING"
                 artist = None
                 title = None
+                pllength = None
             else:
                 status = "error? (%s)" % s["state"]
                 artist = None
                 title = None
+                pllength = None
 
-            print "Drawing for", status, artist, title
+            print "Drawing for", status, artist, title, pllength
 
             self.screen.fill(grey)
 
@@ -121,6 +134,12 @@ class pyscope:
                 try:
                     status_surface, size = self.get_font_surface(status, self.size[0] * 0.3, 50, white)
                     self.screen.blit(status_surface, (self.size[0] - size[0] - 5, 5))
+                except:
+                    pass
+            if artist:
+                try:
+                    pllength_surface, size = self.get_font_surface(pllength, size[0] * 0.4, 80, white)
+                    self.screen.blit(pllength_surface, (10, self.size[1] - 30))
                 except:
                     pass
 
