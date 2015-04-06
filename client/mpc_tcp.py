@@ -3,9 +3,13 @@
 import sys, socket, select, time
 from Queue import Queue
 import threading
-from mpc_base import MPCClient
 
-class MPC_TCP(MPCClient):
+class MPC_TCP(object):
+    def __init__(self, outq, host, port):
+        self.host = host
+        self.port = int(port)
+        self.outq = outq
+        self.connect()
 
     def send(self, cmdidx, cmd):
         print "sending to socket %s %r" % (cmdidx, cmd)
@@ -34,8 +38,11 @@ class MPC_TCP(MPCClient):
             else:
                 if len(data) == 0:
                     print "socket closed on server end"
+                    break
                 else:
                     resp.append(data)
+        print "reconnecting"
+        self.socket_thread()
 
 
     def connect(self):

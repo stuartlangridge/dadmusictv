@@ -8,15 +8,26 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.clock import Clock
 from kivy.adapters.simplelistadapter import SimpleListAdapter
+from kivy.adapters.listadapter import ListAdapter
 from kivy.uix.listview import ListView
 
 from Queue import Queue
-import threading
+import threading, string
 from functools import partial
 
-from mpc_tcp import MPC_TCP as MPC
+from kivy.utils import platform
+if str(platform) == "android":
+    from mpc_btrfcomm import MPC_BTRFCOMM as MPC
+    REMOTE_HOST = "musictv-0" # bt name of destination
+    REMOTE_PORT = None
+else:
+    from mpc_tcp import MPC_TCP as MPC
+    REMOTE_HOST = "dawn.home"
+    REMOTE_PORT = 6600
 
-BUTTONHEIGHT = 50
+__version__ = "0.1"
+
+BUTTONHEIGHT = 90
 
 class ButtonWithData(Button):
     def __init__(self, *args, **kwargs):
@@ -25,34 +36,60 @@ class ButtonWithData(Button):
         del(kwargs["data"])
         super(ButtonWithData, self).__init__(*args, **kwargs)
 
-class ScrollableButtonStack(ScrollView):
+class ScrollableButtonStack(BoxLayout):
     def __init__(self, *args, **kwargs):
         data = kwargs.get("data", [])
         if data: del(kwargs["data"])
+        kwargs["orientation"] = "horizontal"
         super(ScrollableButtonStack, self).__init__(*args, **kwargs)
+        self.sv = ScrollView(size_hint=(0.9,1))
         self.buttonstack = BoxLayout(orientation="vertical", size_hint=(1,None), spacing=2)
-        self.add_widget(self.buttonstack)
+        self.sv.add_widget(self.buttonstack)
+        self.add_widget(self.sv)
+
+        self.alphaidx = {}
+        self.alphabet = BoxLayout(orientation="vertical", size_hint=(0.1,1), spacing=0)
+        for i in string.uppercase:
+            btn = Button(text=i, size_hint=(1,1.0/len(string.uppercase)), background_color=(0,0,0,1))
+            self.alphabet.add_widget(btn)
+            btn.bind(on_touch_move=self.alphatouch)
+            btn.bind(on_touch_down=self.alphatouch)
+        self.add_widget(self.alphabet)
+
         self.UNIQUIFIER = 0
         self.set_data(data)
 
+    def alphatouch(self, btn, pos):
+        if btn.collide_point(*pos.pos):
+            uni = self.alphaidx.get(btn.text)
+            if uni:
+                Clock.schedule_once(lambda x: self._scroll_to_uniquifier(uni), 0.01)
+
     def set_data(self, data):
+        self.sv.remove_widget(self.buttonstack)
         self.buttonstack.clear_widgets()
         self.buttonstack.height = BUTTONHEIGHT * len(data)
+        self.alphaidx = {}
         for i in data:
             nd = i.copy()
             nd["unique"] = self.UNIQUIFIER
             self.UNIQUIFIER += 1
             nd["open"] = False
+            first = i["text"][0].upper()
+            if first not in self.alphaidx:
+                self.alphaidx[first] = nd["unique"]
             b = ButtonWithData(text=i["text"], size_hint_x=0.8, size_y=BUTTONHEIGHT, data=nd)
             self.buttonstack.add_widget(b)
             b.bind(on_press=self.toggle_open)
+        self.sv.add_widget(self.buttonstack)
 
     def _get_button_at_top_uniquifier(self):
+        print "gbatu"
         if not self.buttonstack.children: return None
         scrollable_height = self.buttonstack.height - self.height
         if scrollable_height < 0:
             return self.buttonstack.children[0].data["unique"]
-        scrolled_px = scrollable_height * (1-self.scroll_y)
+        scrolled_px = scrollable_height * (1-self.sv.scroll_y)
         widget_idx_at_top = int(round(float(scrolled_px) / BUTTONHEIGHT))
         # but buttonstack.children is in reverse order, so
         widget_idx_at_top = len(self.buttonstack.children) - widget_idx_at_top - 1
@@ -60,6 +97,7 @@ class ScrollableButtonStack(ScrollView):
         return self.buttonstack.children[widget_idx_at_top].data["unique"]
 
     def _scroll_to_uniquifier(self, uni):
+        print "stu"
         if uni is None: return
         scrollable_height = self.buttonstack.height - self.height
         idx = None
@@ -75,8 +113,11 @@ class ScrollableButtonStack(ScrollView):
         idx = len(self.buttonstack.children) - idx - 1
         scroll_position = (idx * BUTTONHEIGHT) / scrollable_height
         print "scroll to widget uni", uni, "which is idx", idx, " posn", scroll_position
-        self.scroll_y = 1-scroll_position
+        Clock.schedule_once(lambda x: self.scroll_now_to(scroll_position), 2)
 
+    def scroll_now_to(self, scroll_position):
+        print "scroll now to"
+        self.sv.scroll_y = 1-scroll_position
 
     def toggle_open(self, button):
         print "toggling open", button, button.data
@@ -179,7 +220,7 @@ class DadMusicTV(App):
             if cmdidx == "list_artists":
                 arts = [{"text":x[8:]} for x in sorted(response.split("\n")) if x.startswith("Artist: ") and x[8:]]
                 self.lvlibrary.set_data(arts)
-            elif len(cmdidx) == 2 and cmdidx[0] == "list_tracks":
+            elif type(cmdidx) == tuple and len(cmdidx) == 2 and cmdidx[0] == "list_tracks":
                 tracks = []
                 ntrack = {}
                 for line in [x.strip() for x in response.split("\n")]:
@@ -216,10 +257,7 @@ class DadMusicTV(App):
         mon_thr.daemon = True
         mon_thr.start()
 
-        host = "musictv.local"
-        host = "localhost"
-        port = 6600
-        self.mpc = MPC(host, port, outq)
+        self.mpc = MPC(outq, host=REMOTE_HOST, port=REMOTE_PORT)
 
         self.lmain = BoxLayout(orientation='vertical', spacing=2)
         ltop = BoxLayout(orientation='horizontal', spacing=2, size_hint=(1,0.1))
@@ -244,7 +282,7 @@ class DadMusicTV(App):
         pltop.add_widget(fwd)
         back.bind(on_press=lambda b: self.mpc.send("back", "previous\n"))
         stop.bind(on_press=lambda b: self.mpc.send("stop", "stop\n"))
-        fwd.bind(on_press=lambda b: self.mpc.send("fwd", "next\n"))
+        fwd.bind(on_press=self.fwd)
         self.adapter_playlist = SimpleListAdapter(data=[], cls=Label)
         lvplaylist_actual = ListView(adapter=self.adapter_playlist, size_hint=(1,0.9))
         self.lvplaylist.add_widget(pltop)
@@ -254,6 +292,11 @@ class DadMusicTV(App):
         self.show_library()
 
         return self.lmain
+
+    def fwd(self, btn):
+        self.mpc.send("fwd", "next\n")
+        # refetch the playlist
+        Clock.schedule_once(lambda x: self.mpc.send("playlistinfo", "playlistinfo\n"), 0.1)
 
 if __name__ == '__main__':
     DadMusicTV().run()
