@@ -66,7 +66,7 @@ Also, in /etc/mpd.conf, set mpd to listen to the network by setting "bind_to_add
 
 We can now use ncmpcpp, the client, to try playing things and see if they worked. Set the output volume to be whatever you want. (Probably 100%; it's not crackly then. You can set the volume that people actually hear stuff at with the volume control on the TV this will eventually be plugged into.)
 
-(here, you need to sod about with making audio go over hdmi. not sure how.)
+You may need to sod about here to make the audio go over HDMI. I didn't have to; it Just Worked when I plugged in an HDMI cable, and video and audio both went over it into the TV. It is not clear whether that's because the pi is set up correctly for that by default, or because I did something to set that up, or because I'm just lucky. Caveat hax0r.
 
 Now, set up our mpd-over-bluetooth mini-client.
 
