@@ -128,38 +128,20 @@ case "$1" in
     ;;
 esac
 --------------------------8<----------------------------
+
 $ sudo chmod a+x /etc/init.d/asplashscreen
 $ sudo insserv /etc/init.d/asplashscreen
 
 
 
------- end here -------
-
-now to actually set stuff up
-$ mkdir recorder
-$ cd recorder/
-$ sudo apt-get install python-virtualenv python-pip
-$ virtualenv --system-site-packages ./venv # need --system-site-packages so it includes pybluez
-$ source venv/bin/activate
-$ pip install supervisor
-
-Add files supervisor.conf, listener_daemon.py, startup.sh, shutdown.sh, sound_recorder.sh from this repository to /home/pi/recorder.
-$ crontab -e
-Add a line:
-@reboot bash /home/pi/recorder/startup.sh
-
-Reboot the pi. Wait until it starts up. You should now be able to connect, as follows:
-
-open blueterm on android, menu > connect, choose the pi (which will be in the paired list), and you are connected; tap keys on the phone and the pi should show them.
-
 Managing the system
 ===================
 
-The crontab runs startup.sh on reboot. This starts supervisord, installed from pip. Supervisord starts the listener daemon, which opens a bluetooth serial port and waits for connections. The listener daemon starts and stops the actual sound recorder by using supervisorctl to do so.
+The crontab runs startup.sh on reboot. This starts supervisord, installed from pip. Supervisord starts the listener daemon, which opens a bluetooth serial port and waits for connections and then proxies them to mpd, and screencontrol which displays what's going on on the screen by being an mpd client.
 
 To inspect the status of running jobs, first enter the virtualenv and then use supervisorctl status, passing the conf file:
 
-$ cd ~/recorder
+$ cd ~/dadmusictv
 $ source venv/bin/activate
 $ supervisorctl -c ./supervisor.conf status
 listener_daemon                  RUNNING   pid 2164, uptime 0:02:22
